@@ -1944,9 +1944,6 @@ function copyReportAsText() {
     lines.push('');
   }
 
-  lines.push('─'.repeat(50));
-  lines.push('Parsed from meeting transcript by AI. Review before submission.');
-
   const text = lines.join('\n');
 
   navigator.clipboard.writeText(text).then(() => {
@@ -2057,7 +2054,6 @@ function renderPreview() {
     html += '</ul>';
   }
 
-  html += '<p class="footer-note">Parsed from meeting transcript by AI. Review before submission.</p>';
   html += '</div>';
   document.getElementById('previewArea').innerHTML = html;
 }
@@ -2190,9 +2186,6 @@ function exportPdf() {
     doc.setFont('helvetica', 'normal'); doc.setFontSize(10);
     bulletList(d.verifyItems, [192, 0, 0]); doc.setTextColor(0, 0, 0);
   }
-
-  checkPage(20); doc.setFontSize(8); doc.setTextColor(136, 136, 136); doc.setFont('helvetica', 'italic');
-  doc.text('Parsed from meeting transcript by AI. Review before submission.', margin, y + 10);
 
   const filename = `ACC-Parsed-Output-${d.reportDate.replace(/\//g, '-')}.pdf`;
   doc.save(filename);
@@ -2355,11 +2348,7 @@ async function exportDocx() {
     });
   }
 
-  children.push(new Paragraph({ spacing: { before: 300 }, children: [
-    new TextRun({ text: 'Parsed from meeting transcript by AI. Review before submission.', italics: true, color: '888888', size: 18, font: 'Arial' })
-  ] }));
-
-  const docFile = new Document({
+    const docFile = new Document({
     styles: {
       default: { document: { run: { font: 'Arial', size: 22 } } },
       paragraphStyles: [

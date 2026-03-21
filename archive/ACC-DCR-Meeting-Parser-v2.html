@@ -1,0 +1,998 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ACC Daily Report Parser - Boldt</title>
+<!-- Inline SVG favicon: bold hard hat icon -->
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%232B579A'/%3E%3Cpath d='M12 40h40v6c0 1.5-1 3-3 3H15c-2 0-3-1.5-3-3v-6z' fill='%23FFD54F'/%3E%3Cpath d='M16 40c0-12 6-20 16-22c10 2 16 10 16 22' fill='%23FFD54F'/%3E%3Crect x='29' y='14' width='6' height='10' rx='3' fill='%23fff'/%3E%3Cpath d='M12 40h40' stroke='%23E6A800' stroke-width='2'/%3E%3C/svg%3E">
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.4/dist/jspdf.plugin.autotable.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; background: #f0f2f5; color: #333; min-height: 100vh; }
+
+  .header { background: #2B579A; color: white; padding: 18px 32px; display: flex; align-items: center; gap: 14px; }
+  .header-icon { width: 40px; height: 40px; flex-shrink: 0; }
+  .header h1 { font-size: 22px; font-weight: 600; }
+  .header .subtitle { font-size: 13px; opacity: 0.8; margin-top: 2px; }
+
+  .container { max-width: 960px; margin: 24px auto; padding: 0 16px; }
+
+  .step-card { background: white; border-radius: 10px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); margin-bottom: 20px; overflow: hidden; }
+  .step-header { padding: 16px 20px; border-bottom: 1px solid #eee; display: flex; align-items: center; gap: 12px; }
+  .step-num { background: #2B579A; color: white; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 600; flex-shrink: 0; }
+  .step-title { font-size: 16px; font-weight: 600; }
+  .step-body { padding: 20px; }
+
+  .helper-text { font-size: 13px; color: #555; line-height: 1.6; margin-bottom: 14px; padding: 10px 14px; background: #f8f9fb; border-left: 3px solid #2B579A; border-radius: 0 6px 6px 0; }
+  .helper-text strong { color: #2B579A; }
+  .helper-steps { list-style: none; padding: 0; margin: 6px 0 0 0; }
+  .helper-steps li { padding: 3px 0; }
+  .helper-steps li::before { content: attr(data-step); display: inline-block; background: #2B579A; color: white; width: 20px; height: 20px; border-radius: 50%; text-align: center; font-size: 11px; line-height: 20px; margin-right: 8px; font-weight: 600; }
+
+  textarea { width: 100%; min-height: 260px; border: 1px solid #ddd; border-radius: 6px; padding: 14px; font-family: 'Consolas', 'Courier New', monospace; font-size: 13px; line-height: 1.5; resize: vertical; }
+  textarea:focus { outline: none; border-color: #2B579A; box-shadow: 0 0 0 2px rgba(43,87,154,0.15); }
+
+  .meta-row { display: flex; gap: 12px; margin-bottom: 12px; flex-wrap: wrap; }
+  .meta-field { flex: 1; min-width: 200px; }
+  .meta-field label { display: block; font-size: 12px; font-weight: 600; color: #555; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .meta-field input { width: 100%; padding: 8px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; }
+  .meta-field input:focus { outline: none; border-color: #2B579A; }
+
+  .btn-row { display: flex; gap: 10px; flex-wrap: wrap; }
+  .btn { padding: 10px 24px; border: none; border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.15s; display: inline-flex; align-items: center; gap: 8px; }
+  .btn-primary { background: #2B579A; color: white; }
+  .btn-primary:hover { background: #1e4277; }
+  .btn-secondary { background: #f0f2f5; color: #333; border: 1px solid #ddd; }
+  .btn-secondary:hover { background: #e4e6e9; }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .btn-sm { padding: 6px 14px; font-size: 12px; }
+
+  /* Copilot prompt section */
+  .prompt-section { margin-top: 16px; border: 1px solid #e0e0e0; border-radius: 8px; overflow: hidden; }
+  .prompt-toggle { width: 100%; padding: 10px 16px; background: #f8f9fb; border: none; cursor: pointer; display: flex; align-items: center; justify-content: space-between; font-size: 13px; font-weight: 600; color: #2B579A; }
+  .prompt-toggle:hover { background: #eef1f6; }
+  .prompt-toggle .arrow { transition: transform 0.2s; font-size: 11px; }
+  .prompt-toggle.open .arrow { transform: rotate(180deg); }
+  .prompt-body { display: none; padding: 14px 16px; border-top: 1px solid #e0e0e0; }
+  .prompt-body.show { display: block; }
+  .prompt-body p { font-size: 13px; color: #555; line-height: 1.5; margin-bottom: 10px; }
+  .prompt-box { background: #1e1e1e; color: #d4d4d4; padding: 14px; border-radius: 6px; font-family: 'Consolas', 'Courier New', monospace; font-size: 12px; line-height: 1.6; white-space: pre-wrap; margin-bottom: 10px; max-height: 220px; overflow-y: auto; }
+  .copy-feedback { font-size: 12px; color: #2e7d32; margin-left: 8px; opacity: 0; transition: opacity 0.3s; }
+  .copy-feedback.show { opacity: 1; }
+
+  /* Preview */
+  .preview-frame { border: 1px solid #ddd; border-radius: 6px; background: white; padding: 24px 32px; font-family: Arial, sans-serif; max-height: 500px; overflow-y: auto; margin-top: 12px; }
+  .preview-frame h1 { color: #2B579A; font-size: 16pt; margin-bottom: 4px; }
+  .preview-frame h2 { color: #2B579A; font-size: 13pt; margin-top: 16px; margin-bottom: 6px; }
+  .preview-frame p { font-size: 11pt; line-height: 1.4; margin-bottom: 4px; }
+  .preview-frame table { width: 100%; border-collapse: collapse; margin: 8px 0; font-size: 10pt; }
+  .preview-frame th { background: #2B579A; color: white; padding: 6px 8px; text-align: left; font-size: 9pt; }
+  .preview-frame td { padding: 5px 8px; border-bottom: 1px solid #e0e0e0; }
+  .preview-frame tr:nth-child(even) { background: #f5f8fc; }
+  .preview-frame .verify { color: #c00; font-weight: bold; font-size: 9pt; }
+  .preview-frame ul { padding-left: 20px; margin: 4px 0; }
+  .preview-frame li { font-size: 11pt; line-height: 1.4; margin-bottom: 3px; }
+  .preview-frame .footer-note { font-size: 9pt; color: #888; font-style: italic; margin-top: 16px; border-top: 1px solid #ddd; padding-top: 8px; }
+
+  .status { padding: 10px 16px; border-radius: 6px; font-size: 13px; margin-top: 12px; display: none; }
+  .status.success { display: block; background: #e8f5e9; color: #2e7d32; }
+  .status.error { display: block; background: #fce4ec; color: #c62828; }
+  .status.warning { display: block; background: #fff3e0; color: #e65100; }
+
+  .lib-status { padding: 8px 16px; border-radius: 6px; font-size: 12px; margin-bottom: 12px; }
+  .lib-status.ok { background: #e8f5e9; color: #2e7d32; }
+  .lib-status.warn { background: #fff3e0; color: #e65100; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <!-- Hard hat icon -->
+  <svg class="header-icon" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+    <rect width="64" height="64" rx="14" fill="#1e4277"/>
+    <path d="M12 40h40v6c0 1.5-1 3-3 3H15c-2 0-3-1.5-3-3v-6z" fill="#FFD54F"/>
+    <path d="M16 40c0-12 6-20 16-22c10 2 16 10 16 22" fill="#FFD54F"/>
+    <rect x="29" y="14" width="6" height="10" rx="3" fill="#fff"/>
+    <path d="M12 40h40" stroke="#E6A800" stroke-width="2"/>
+  </svg>
+  <div>
+    <h1>ACC Daily Report Parser</h1>
+    <div class="subtitle">Paste your Teams Copilot meeting summary &rarr; get a formatted DOCX or PDF</div>
+  </div>
+</div>
+
+<div class="container">
+
+  <!-- STEP 1: Paste Summary -->
+  <div class="step-card">
+    <div class="step-header">
+      <div class="step-num">1</div>
+      <div class="step-title">Paste the Copilot Summary</div>
+    </div>
+    <div class="step-body">
+      <div class="helper-text">
+        <strong>How to get the summary from Teams:</strong>
+        <ul class="helper-steps">
+          <li data-step="1">Open <strong>Microsoft Teams</strong> and go to your meeting chat or calendar</li>
+          <li data-step="2">Click the <strong>Recap</strong> tab at the top of the meeting</li>
+          <li data-step="3">Find the <strong>AI Notes</strong> (Copilot summary) section</li>
+          <li data-step="4">Click inside the summary, press <strong>Ctrl+A</strong> (select all), then <strong>Ctrl+C</strong> (copy)</li>
+          <li data-step="5">Click in the box below and press <strong>Ctrl+V</strong> (paste)</li>
+        </ul>
+      </div>
+      <textarea id="rawInput" placeholder="Paste the Copilot AI summary here...
+
+The parser works best with structured summaries that include sections like:
+  - Work log / trade headcounts
+  - Weather conditions
+  - Safety observations
+  - Inspections (passed and scheduled)
+  - Deliveries
+  - Coordination items"></textarea>
+
+      <!-- Copilot prompt for richer detail -->
+      <div class="prompt-section">
+        <button class="prompt-toggle" id="promptToggle" onclick="togglePrompt()">
+          <span>Need more detail? Use this Copilot prompt to get a richer summary</span>
+          <span class="arrow">&#9660;</span>
+        </button>
+        <div class="prompt-body" id="promptBody">
+          <p>If the default Copilot summary is too thin, open the <strong>Copilot chat</strong> in your Teams meeting Recap and paste this prompt. Then copy the response and paste it above.</p>
+          <div class="prompt-box" id="copilotPrompt">From this meeting, please provide a structured summary with these sections:
+
+1. MANPOWER: List each company or trade mentioned with their number of workers and hours worked. Use a table format: Company | Discipline | # Workers | Hours | Work Performed
+
+2. ACTION ITEMS: List every commitment made, who owns it, and the due date
+
+3. INSPECTIONS: List all inspections mentioned — passed, failed, or scheduled — with dates
+
+4. DELIVERIES: List all deliveries mentioned with dates and materials
+
+5. WEATHER: Current conditions and any weather impacts on work discussed
+
+6. SAFETY: Any safety shout-outs, observations, risks, or incidents
+
+7. COORDINATION: Any scheduling conflicts, sequencing issues, or items needing follow-up
+
+Format each section with a clear heading. Be specific with names, numbers, and dates.</div>
+          <div>
+            <button class="btn btn-sm btn-primary" onclick="copyPrompt()">Copy Prompt to Clipboard</button>
+            <span class="copy-feedback" id="copyFeedback">Copied!</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 2: Report Details -->
+  <div class="step-card">
+    <div class="step-header">
+      <div class="step-num">2</div>
+      <div class="step-title">Confirm Report Details</div>
+    </div>
+    <div class="step-body">
+      <div class="helper-text">
+        Verify the project name and date are correct. These appear at the top of your exported report.
+      </div>
+      <div class="meta-row">
+        <div class="meta-field">
+          <label>Project Name</label>
+          <input type="text" id="projectName" value="Folsom Care Complex at Broadstone Phase II">
+        </div>
+        <div class="meta-field">
+          <label>Report Date</label>
+          <input type="date" id="reportDate">
+        </div>
+      </div>
+      <div class="meta-row">
+        <div class="meta-field">
+          <label>Source</label>
+          <input type="text" id="sourceField" value="MS Teams Recap - Copilot AI Summary">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 3: Parse & Export -->
+  <div class="step-card">
+    <div class="step-header">
+      <div class="step-num">3</div>
+      <div class="step-title">Parse &amp; Export</div>
+    </div>
+    <div class="step-body">
+      <div class="helper-text">
+        Click <strong>Parse Summary</strong> to see a preview of the report. Review it, then click <strong>Export DOCX</strong> or <strong>Export PDF</strong> to download.
+      </div>
+      <div id="libStatus" class="lib-status warn">Checking export libraries...</div>
+      <div class="btn-row">
+        <button class="btn btn-primary" id="btnParse" onclick="parseAndPreview()">Parse Summary</button>
+        <button class="btn btn-secondary" id="btnDocx" onclick="exportDocx()" disabled>Export DOCX</button>
+        <button class="btn btn-secondary" id="btnPdf" onclick="exportPdf()" disabled>Export PDF</button>
+      </div>
+      <div class="status" id="statusMsg"></div>
+      <div id="previewArea"></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ──────── GLOBALS ────────
+let parsedData = null;
+
+// Set today's date as default
+document.getElementById('reportDate').value = new Date().toISOString().split('T')[0];
+
+// ──────── COPILOT PROMPT TOGGLE ────────
+function togglePrompt() {
+  const body = document.getElementById('promptBody');
+  const toggle = document.getElementById('promptToggle');
+  body.classList.toggle('show');
+  toggle.classList.toggle('open');
+}
+
+function copyPrompt() {
+  const text = document.getElementById('copilotPrompt').textContent;
+  navigator.clipboard.writeText(text).then(() => {
+    const fb = document.getElementById('copyFeedback');
+    fb.classList.add('show');
+    setTimeout(() => fb.classList.remove('show'), 2000);
+  });
+}
+
+// ──────── PARSER ────────
+function parseAndPreview() {
+  const raw = rawInput.value.trim();
+  if (!raw) { showStatus('Please paste the Copilot summary first.', 'error'); return; }
+
+  const projectName = document.getElementById('projectName').value.trim();
+  const reportDate = document.getElementById('reportDate').value;
+  const source = document.getElementById('sourceField').value.trim();
+
+  parsedData = {
+    projectName,
+    reportDate: formatDate(reportDate),
+    source,
+    workLog: [],
+    weather: '',
+    safetyShoutouts: [],
+    safetyRisks: [],
+    inspectionsPassed: [],
+    inspectionsScheduled: [],
+    deliveries: [],
+    coordination: [],
+    verifyItems: [],
+  };
+
+  const text = raw.replace(/\r\n/g, '\n');
+
+  // Detect if this looks like a raw transcript (timestamps, very short lines, chit-chat)
+  if (looksLikeRawTranscript(text)) {
+    showStatus(
+      'This looks like a raw meeting transcript, not a Copilot summary. ' +
+      'For the best results, open the "Need more detail?" section above and use the Copilot prompt to get a structured summary from Teams Recap.',
+      'warning'
+    );
+    document.getElementById('btnDocx').disabled = true;
+    document.getElementById('btnPdf').disabled = true;
+    document.getElementById('previewArea').innerHTML = '';
+    return;
+  }
+
+  // Extract sections using common heading patterns
+  const sections = splitSections(text);
+
+  for (const [heading, content] of sections) {
+    const h = heading.toLowerCase();
+    if (h.includes('work log') || h.includes('trade') || h.includes('headcount') || h.includes('worker') || h.includes('manpower')) {
+      parsedData.workLog = parseWorkLog(content);
+    } else if (h.includes('weather')) {
+      // Collect all meaningful weather lines (strip bullets, footnotes, sub-headers)
+      const weatherLines = content.split('\n')
+        .map(l => l.trim().replace(/^[*-]\s*/, '').trim())
+        .filter(l => l.length > 3 && !/^impacts?\s*(discussed)?:?\s*$/i.test(l))
+        .map(l => cleanFootnotes(l));
+      parsedData.weather = weatherLines.join(' ').trim();
+    } else if (h.includes('safety')) {
+      parseSafety(content);
+    } else if (h.includes('inspection')) {
+      parseInspections(content);
+    } else if (h.includes('deliver')) {
+      parsedData.deliveries = parseBulletList(content);
+    } else if (h.includes('coordination') || h.includes('key items') || h.includes('action') || h.includes('follow')) {
+      parsedData.coordination = parseBulletList(content);
+    } else if (h.includes('verif') || h.includes('needs')) {
+      parsedData.verifyItems = parseBulletList(content);
+    }
+  }
+
+  // Check if we parsed anything meaningful
+  const hasContent = parsedData.workLog.length > 0 || parsedData.weather ||
+    parsedData.safetyShoutouts.length > 0 || parsedData.safetyRisks.length > 0 ||
+    parsedData.inspectionsPassed.length > 0 || parsedData.inspectionsScheduled.length > 0 ||
+    parsedData.deliveries.length > 0 || parsedData.coordination.length > 0;
+
+  if (!hasContent) {
+    showStatus(
+      'Could not find structured sections in this text. Make sure you\'re pasting the Copilot AI summary (not the raw transcript). ' +
+      'Try the Copilot prompt in the "Need more detail?" section above for best results.',
+      'warning'
+    );
+    document.getElementById('btnDocx').disabled = true;
+    document.getElementById('btnPdf').disabled = true;
+    document.getElementById('previewArea').innerHTML = '';
+    return;
+  }
+
+  renderPreview();
+  document.getElementById('btnDocx').disabled = false;
+  document.getElementById('btnPdf').disabled = false;
+  showStatus('Parsed successfully! Review the preview below, then export.', 'success');
+}
+
+function looksLikeRawTranscript(text) {
+  const lines = text.split('\n').filter(l => l.trim());
+  if (lines.length < 10) return false;
+
+  // Count lines that look like timestamps (e.g., "0:04", "13:42", "1 hour 2 minutes")
+  const timestampLines = lines.filter(l => /^\d{1,2}:\d{2}/.test(l.trim()) || /^\d+\s*(minutes?|hours?|seconds?)/i.test(l.trim()));
+
+  // Count very short lines (chit-chat like "Yeah.", "OK.", "Thanks.")
+  const shortLines = lines.filter(l => l.trim().length < 15);
+
+  // If >20% are timestamps or >50% are very short, it's likely a raw transcript
+  return (timestampLines.length > lines.length * 0.1) || (shortLines.length > lines.length * 0.5);
+}
+
+function splitSections(text) {
+  // Match ONLY clear section headings:
+  // - Numbered: "1. MANPOWER", "2. ACTION ITEMS", "3. Inspections"
+  // - Markdown: "## Weather", "### Safety Observations"
+  // - Bold: "**Deliveries**"
+  // Must start with a number+dot, hash marks, or double asterisks to avoid matching random capitalized lines
+  const patterns = [
+    /^(\d+[\.\)]\s*)([A-Z][A-Za-z /&\-]{2,50}?)\s*$/gm,  // "1. MANPOWER" or "2. Action Items"
+    /^(#{2,3}\s+)([A-Z][A-Za-z /&\-]{2,50}?)\s*$/gm,       // "## Weather" (require 2+ hashes; single # matches column headers like "# Workers")
+    /^(\*\*)([A-Z][A-Za-z /&\-]{2,50}?)(\*\*)\s*$/gm,       // "**Deliveries**"
+  ];
+
+  const headings = [];
+  for (const pattern of patterns) {
+    let match;
+    while ((match = pattern.exec(text)) !== null) {
+      headings.push({ index: match.index, text: match[2].trim().replace(/[:*#]/g, '').trim() });
+    }
+  }
+
+  // Sort by position in text
+  headings.sort((a, b) => a.index - b.index);
+
+  // Deduplicate headings at the same position
+  const unique = headings.filter((h, i) => i === 0 || h.index !== headings[i - 1].index);
+
+  const sections = [];
+  for (let i = 0; i < unique.length; i++) {
+    const start = text.indexOf('\n', unique[i].index) + 1;
+    const end = i + 1 < unique.length ? unique[i + 1].index : text.length;
+    sections.push([unique[i].text, text.slice(start, end)]);
+  }
+  return sections;
+}
+
+function parseWorkLog(content) {
+  const rows = [];
+  const lines = content.split('\n').map(l => l.trim()).filter(l => l);
+
+  // Strategy 1: Try pipe/tab-separated table (original format)
+  const tsvRows = [];
+  for (const line of lines) {
+    if (/^[-=]+$/.test(line) || /^\s*TOTALS/i.test(line)) continue;
+    const parts = line.split(/\t|\|/).map(p => p.trim()).filter(p => p);
+    if (parts.length >= 5) tsvRows.push(parts);
+  }
+  if (tsvRows.length >= 2) {
+    // Check if first row looks like headers
+    const start = /company|discipline|worker/i.test(tsvRows[0].join(' ')) ? 1 : 0;
+    for (let i = start; i < tsvRows.length; i++) {
+      const p = tsvRows[i];
+      const needsVerify = /verify|unclear|\?/i.test(p.join(' '));
+      rows.push({ company: p[0], discipline: p[1], workers: p[2] || '?', hours: p[3] || '?', work: p.slice(4).join(', '), needsVerify });
+    }
+    if (rows.length > 0) return rows;
+  }
+
+  // Strategy 2: Multi-space separated (like the original DOCX output)
+  const spacedRows = [];
+  for (const line of lines) {
+    if (/^[-=]+$/.test(line) || /^\s*TOTALS/i.test(line)) continue;
+    const parts = line.split(/\s{2,}/).map(p => p.trim()).filter(p => p);
+    if (parts.length >= 4) spacedRows.push(parts);
+  }
+  if (spacedRows.length >= 2) {
+    const start = /company|discipline|worker/i.test(spacedRows[0].join(' ')) ? 1 : 0;
+    for (let i = start; i < spacedRows.length; i++) {
+      const p = spacedRows[i];
+      const needsVerify = /verify|unclear|\?/i.test(p.join(' '));
+      rows.push({ company: p[0], discipline: p[1], workers: p[2] || '?', hours: p[3] || '?', work: p.slice(4).join(', '), needsVerify });
+    }
+    if (rows.length > 0) return rows;
+  }
+
+  // Strategy 3: Copilot multiline format — each cell is on its own line
+  // Detect header row: look for the 5 column headers appearing as consecutive lines
+  const headerKeywords = ['company', 'discipline', 'worker', 'hours', 'work performed'];
+  let headerStart = -1;
+  for (let i = 0; i < lines.length - 4; i++) {
+    const chunk = lines.slice(i, i + 5).map(l => l.toLowerCase());
+    const matches = headerKeywords.filter(kw => chunk.some(c => c.includes(kw)));
+    if (matches.length >= 3) { headerStart = i; break; }
+  }
+
+  if (headerStart >= 0) {
+    // Find how many header columns we matched (could be 5 or 6 with '#')
+    let numCols = 5;
+    // Detect column count by looking at the header lines
+    let hdrEnd = headerStart;
+    for (let i = headerStart; i < Math.min(headerStart + 8, lines.length); i++) {
+      const l = lines[i].toLowerCase();
+      if (headerKeywords.some(kw => l.includes(kw)) || l === '#' || l.startsWith('# ')) {
+        hdrEnd = i;
+      } else break;
+    }
+    numCols = hdrEnd - headerStart + 1;
+    if (numCols < 4) numCols = 5;
+    if (numCols > 6) numCols = 5;
+
+    // Data rows start after headers
+    const dataStart = hdrEnd + 1;
+    const dataLines = lines.slice(dataStart);
+
+    // Group lines into rows of numCols, stopping at empty sections or footnotes
+    for (let i = 0; i + numCols - 1 < dataLines.length; i += numCols) {
+      const chunk = dataLines.slice(i, i + numCols);
+      // Stop if we hit something that looks like a new section heading
+      if (/^\d+\.\s+[A-Z]/.test(chunk[0])) break;
+
+      // Strip trailing footnote numbers (e.g., "Electrical work in progress 2")
+      const clean = v => v.replace(/\s+\d{1,2}\s*$/, '').trim();
+
+      const company = clean(chunk[0]);
+      const discipline = clean(chunk[1] || '');
+      const workers = clean(chunk[2] || '?');
+      const hours = clean(chunk[3] || '?');
+      const work = clean(chunk.slice(4).join(', ') || '');
+
+      if (!company || company.length < 2) continue;
+      const needsVerify = /not specified|not stated|verify|unclear|\?/i.test(chunk.join(' '));
+      rows.push({ company, discipline, workers, hours, work, needsVerify });
+    }
+    if (rows.length > 0) return rows;
+  }
+
+  // Strategy 4: Fallback — look for lines with numbers that might be headcounts
+  for (const line of lines) {
+    if (/^[-=]+$/.test(line) || /^\s*TOTALS/i.test(line) || /company|discipline/i.test(line)) continue;
+    const parts = line.split(/\t|\s{2,}|\|/).map(p => p.trim()).filter(p => p);
+    if (parts.length >= 3) {
+      const company = parts[0];
+      const discipline = parts.length >= 5 ? parts[1] : '';
+      let workers = '?', hours = '?', work = '';
+      if (parts.length >= 5) { workers = parts[2]; hours = parts[3]; work = parts.slice(4).join(', '); }
+      else if (parts.length === 4) { workers = parts[1]; hours = parts[2]; work = parts[3]; }
+      else { work = parts.slice(1).join(', '); }
+      const needsVerify = /verify|unclear|\?/i.test(line);
+      rows.push({ company, discipline, workers, hours, work, needsVerify });
+    }
+  }
+  return rows;
+}
+
+function parseSafety(content) {
+  const lines = content.split('\n');
+  let mode = 'risks';
+  for (const line of lines) {
+    const l = line.trim();
+    if (!l) continue;
+    // Strip bullet prefix for keyword detection
+    const stripped = l.replace(/^[-*]\s*/, '');
+    if (/shout.?out|kudos|positive|recognition/i.test(stripped)) { mode = 'shoutouts'; }
+    // Detect sub-headers like "Guidance given:", "Observations:", even inside bullet lines
+    const clean = cleanLine(l);
+    if (clean.length < 3 || /^none\s*(reported|noted)?\.?$/i.test(clean)) continue;
+    // Skip "Incidents: None reported" lines
+    if (/^incidents?\s*:\s*none/i.test(stripped)) continue;
+    // Remove leading sub-header labels like "Guidance given:" or "Observations:" for cleaner output
+    let value = clean.replace(/^(guidance\s+given|observations?|ppe\s+compliance|risks?|concerns?)\s*:\s*/i, '').trim();
+    if (value.length < 3) continue;
+    if (mode === 'shoutouts') parsedData.safetyShoutouts.push(value);
+    else parsedData.safetyRisks.push(value);
+  }
+}
+
+function parseInspections(content) {
+  const lines = content.split('\n');
+  let mode = 'scheduled'; // default to scheduled since Copilot often lists all as scheduled
+
+  // Try to detect Copilot table format (Inspection | Status | Date columns)
+  const tableRows = parseGenericTable(content, ['inspection', 'status', 'date']);
+  if (tableRows.length > 0) {
+    for (const row of tableRows) {
+      const status = (row[1] || '').toLowerCase();
+      const item = cleanFootnotes(`${row[0]}${row[2] ? ' - ' + row[2] : ''}`);
+      if (/passed|completed|approved/i.test(status)) parsedData.inspectionsPassed.push(item);
+      else parsedData.inspectionsScheduled.push(item);
+    }
+    return;
+  }
+
+  for (const line of lines) {
+    const l = line.trim();
+    if (!l) continue;
+    if (/passed|completed|approved/i.test(l) && !l.startsWith('-') && !l.startsWith('*')) { mode = 'passed'; continue; }
+    if (/scheduled|upcoming|pending|planned/i.test(l) && !l.startsWith('-') && !l.startsWith('*')) { mode = 'scheduled'; continue; }
+    const clean = cleanLine(l);
+    if (clean.length < 3) continue;
+    if (mode === 'passed') parsedData.inspectionsPassed.push(clean);
+    else parsedData.inspectionsScheduled.push(clean);
+  }
+}
+
+function parseBulletList(content) {
+  // Try table format first (for ACTION ITEMS and DELIVERIES from Copilot)
+  const tableRows = parseGenericTable(content);
+  if (tableRows.length > 0) {
+    return tableRows.map(row => cleanFootnotes(row.join(' - '))).filter(l => l.length > 2);
+  }
+
+  return content.split('\n')
+    .map(l => cleanLine(l))
+    .filter(l => l.length > 2);
+}
+
+// Parse a Copilot-style table where each cell is on its own line
+function parseGenericTable(content, expectedHeaders) {
+  const lines = content.split('\n').map(l => l.trim()).filter(l => l);
+  if (lines.length < 3) return [];
+
+  // Detect header row: look for lines that match expected column headers
+  // or just detect any run of short capitalized words that look like headers
+  let headerStart = -1;
+  let numCols = 0;
+
+  if (expectedHeaders && expectedHeaders.length > 0) {
+    for (let i = 0; i < lines.length - 2; i++) {
+      // Only consider short lines as potential headers (column headers are typically < 25 chars)
+      if (lines[i].length > 20) continue;
+      let matchCount = 0;
+      for (let j = 0; j < Math.min(6, lines.length - i); j++) {
+        const candidate = lines[i + j];
+        if (candidate.length <= 20 && expectedHeaders.some(h => candidate.toLowerCase().includes(h))) matchCount++;
+      }
+      if (matchCount >= 2) {
+        headerStart = i;
+        // Count header lines — must be short (column headers, not data)
+        numCols = 0;
+        for (let j = headerStart; j < Math.min(headerStart + 8, lines.length); j++) {
+          const candidate = lines[j];
+          if (candidate.length > 20) break; // too long to be a header
+          if (expectedHeaders.some(h => candidate.toLowerCase().includes(h)) || /^(#|date|time|status|owner|due|material|expected)/i.test(candidate)) {
+            numCols++;
+          } else break;
+        }
+        break;
+      }
+    }
+  }
+
+  if (headerStart < 0 || numCols < 2) return [];
+
+  const dataStart = headerStart + numCols;
+  const dataLines = lines.slice(dataStart);
+  const rows = [];
+
+  for (let i = 0; i + numCols - 1 < dataLines.length; i += numCols) {
+    const chunk = dataLines.slice(i, i + numCols);
+    if (/^\d+\.\s+[A-Z]/.test(chunk[0])) break; // new section
+    if (chunk.every(c => c.length < 2)) break;
+    rows.push(chunk);
+  }
+  return rows;
+}
+
+function cleanLine(l) {
+  return cleanFootnotes(l.replace(/^[-*]\s*/, '').replace(/^\d+[\.\)]\s*/, '').trim());
+}
+
+function cleanFootnotes(s) {
+  // Remove trailing footnote numbers like " 2" or " 15" at end of lines (Copilot source citations)
+  return s.replace(/\s+\d{1,2}\s*$/, '').trim();
+}
+
+function formatDate(dateStr) {
+  if (!dateStr) return new Date().toLocaleDateString('en-US');
+  const d = new Date(dateStr + 'T12:00:00');
+  return d.toLocaleDateString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit' });
+}
+
+// ──────── PREVIEW ────────
+function renderPreview() {
+  const d = parsedData;
+  let html = '<div class="preview-frame">';
+  html += `<h1>ACC Daily Report - Parsed Output</h1>`;
+  html += `<p><strong>Project:</strong> ${esc(d.projectName)}</p>`;
+  html += `<p><strong>Date:</strong> ${esc(d.reportDate)}</p>`;
+  html += `<p><strong>Source:</strong> ${esc(d.source)}</p>`;
+
+  let secNum = 1;
+
+  if (d.workLog.length > 0) {
+    html += `<h2>${secNum}. Work Log (Copy/Paste to ACC)</h2>`;
+    html += '<table><tr><th>Company</th><th>Discipline</th><th># Workers</th><th>Hours</th><th>Work Performed</th></tr>';
+    let totalW = 0;
+    for (const r of d.workLog) {
+      const w = parseInt(r.workers) || 0;
+      totalW += w;
+      html += `<tr><td>${esc(r.company)}</td><td>${esc(r.discipline)}</td><td>${esc(r.workers)}${r.needsVerify ? ' <span class="verify">VERIFY</span>' : ''}</td><td>${esc(r.hours)}</td><td>${esc(r.work)}</td></tr>`;
+    }
+    html += '</table>';
+    html += `<p><strong>TOTALS:</strong> ~${totalW}+ workers${d.workLog.some(r=>r.needsVerify) ? ' (some headcounts need verification)' : ''}</p>`;
+    secNum++;
+  }
+
+  if (d.weather) {
+    html += `<h2>${secNum}. Weather</h2><p>${esc(d.weather)}</p>`;
+    secNum++;
+  }
+
+  if (d.safetyShoutouts.length > 0 || d.safetyRisks.length > 0) {
+    html += `<h2>${secNum}. Safety Observations</h2>`;
+    if (d.safetyShoutouts.length) {
+      html += '<p><strong>Shout-outs:</strong></p><ul>';
+      d.safetyShoutouts.forEach(s => html += `<li>${esc(s)}</li>`);
+      html += '</ul>';
+    }
+    if (d.safetyRisks.length) {
+      html += '<p><strong>Risks/Observations:</strong></p><ul>';
+      d.safetyRisks.forEach(s => html += `<li>${esc(s)}</li>`);
+      html += '</ul>';
+    }
+    secNum++;
+  }
+
+  if (d.inspectionsPassed.length > 0 || d.inspectionsScheduled.length > 0) {
+    html += `<h2>${secNum}. Inspections</h2>`;
+    if (d.inspectionsPassed.length) {
+      html += '<p><strong>Passed:</strong></p><ul>';
+      d.inspectionsPassed.forEach(s => html += `<li>${esc(s)}</li>`);
+      html += '</ul>';
+    }
+    if (d.inspectionsScheduled.length) {
+      html += '<p><strong>Scheduled:</strong></p><ul>';
+      d.inspectionsScheduled.forEach(s => html += `<li>${esc(s)}</li>`);
+      html += '</ul>';
+    }
+    secNum++;
+  }
+
+  if (d.deliveries.length > 0) {
+    html += `<h2>${secNum}. Deliveries</h2><ul>`;
+    d.deliveries.forEach(s => html += `<li>${esc(s)}</li>`);
+    html += '</ul>';
+    secNum++;
+  }
+
+  if (d.coordination.length > 0) {
+    html += `<h2>${secNum}. Key Coordination Items</h2><ul>`;
+    d.coordination.forEach(s => html += `<li>${esc(s)}</li>`);
+    html += '</ul>';
+    secNum++;
+  }
+
+  if (d.verifyItems.length > 0) {
+    html += '<h2 style="color:#c00">Items Needing Verification</h2><ul>';
+    d.verifyItems.forEach(s => html += `<li class="verify">${esc(s)}</li>`);
+    html += '</ul>';
+  }
+
+  html += '<p class="footer-note">Parsed from meeting transcript by AI. Review before submission.</p>';
+  html += '</div>';
+  document.getElementById('previewArea').innerHTML = html;
+}
+
+function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+// ──────── LIBRARY CHECK ────────
+function checkLibraries() {
+  const libs = {
+    'jsPDF': () => window.jspdf && window.jspdf.jsPDF,
+    'AutoTable': () => window.jspdf && window.jspdf.jsPDF && new (window.jspdf.jsPDF)().autoTable,
+    'docx': () => window.docx && window.docx.Document,
+    'FileSaver': () => window.saveAs,
+  };
+  const missing = [];
+  for (const [name, check] of Object.entries(libs)) {
+    try { if (!check()) missing.push(name); } catch(e) { missing.push(name); }
+  }
+  const el = document.getElementById('libStatus');
+  if (missing.length === 0) {
+    el.className = 'lib-status ok';
+    el.textContent = 'All export libraries loaded. PDF and DOCX export ready.';
+  } else {
+    el.className = 'lib-status warn';
+    el.innerHTML = 'Missing libraries: ' + missing.join(', ') + '. Export may not work. <strong>Make sure you have internet access</strong> and refresh.';
+  }
+}
+window.addEventListener('load', () => setTimeout(checkLibraries, 1500));
+
+// ──────── EXPORT: PDF ────────
+function exportPdf() {
+  if (!parsedData) return;
+  try {
+  const d = parsedData;
+  if (!window.jspdf || !window.jspdf.jsPDF) {
+    showStatus('Error: jsPDF library not loaded. Check your internet connection and refresh.', 'error');
+    return;
+  }
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit: 'pt', format: 'letter' });
+  const W = doc.internal.pageSize.getWidth();
+  const margin = 54;
+  const contentW = W - margin * 2;
+  let y = margin;
+
+  function checkPage(needed) {
+    if (y + needed > doc.internal.pageSize.getHeight() - 60) { doc.addPage(); y = margin; }
+  }
+
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(16); doc.setTextColor(43, 87, 154);
+  doc.text('ACC Daily Report - Parsed Output', margin, y); y += 24;
+
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(11); doc.setTextColor(0, 0, 0);
+  doc.text(`Project: ${d.projectName}`, margin, y); y += 15;
+  doc.text(`Date: ${d.reportDate}`, margin, y); y += 15;
+  doc.text(`Source: ${d.source}`, margin, y); y += 22;
+
+  let secNum = 1;
+
+  function sectionHeading(title) {
+    checkPage(30);
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(13); doc.setTextColor(43, 87, 154);
+    doc.text(`${secNum}. ${title}`, margin, y); y += 18; secNum++;
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.setTextColor(0, 0, 0);
+  }
+
+  function bulletList(items, color) {
+    items.forEach(item => {
+      checkPage(14);
+      if (color) doc.setTextColor(...color);
+      const lines = doc.splitTextToSize(`\u2022  ${item}`, contentW - 10);
+      lines.forEach(line => { checkPage(13); doc.text(line, margin + 10, y); y += 13; });
+    });
+    if (color) doc.setTextColor(0, 0, 0);
+    y += 4;
+  }
+
+  if (d.workLog.length > 0) {
+    sectionHeading('Work Log (Copy/Paste to ACC)');
+    const tableBody = d.workLog.map(r => [
+      r.company, r.discipline,
+      r.workers + (r.needsVerify ? ' *' : ''),
+      r.hours + (r.needsVerify && r.hours === '?' ? ' *' : ''),
+      r.work + (r.needsVerify ? ' - VERIFY' : '')
+    ]);
+    doc.autoTable({
+      startY: y, margin: { left: margin, right: margin },
+      head: [['Company', 'Discipline', '# Workers', 'Hours', 'Work Performed']],
+      body: tableBody,
+      styles: { fontSize: 8, cellPadding: 4, font: 'helvetica' },
+      headStyles: { fillColor: [43, 87, 154], textColor: 255, fontStyle: 'bold' },
+      alternateRowStyles: { fillColor: [245, 248, 252] },
+      columnStyles: { 0: { cellWidth: 100 }, 1: { cellWidth: 80 }, 2: { cellWidth: 50 }, 3: { cellWidth: 40 } },
+    });
+    y = doc.lastAutoTable.finalY + 6;
+    const totalW = d.workLog.reduce((s, r) => s + (parseInt(r.workers) || 0), 0);
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(10);
+    doc.text(`TOTALS: ~${totalW}+ workers` + (d.workLog.some(r=>r.needsVerify) ? ' (some headcounts need verification)' : ''), margin, y);
+    y += 20; doc.setFont('helvetica', 'normal');
+  }
+
+  if (d.weather) {
+    sectionHeading('Weather');
+    const wLines = doc.splitTextToSize(d.weather, contentW);
+    wLines.forEach(line => { checkPage(13); doc.text(line, margin, y); y += 13; });
+    y += 5;
+  }
+
+  if (d.safetyShoutouts.length || d.safetyRisks.length) {
+    sectionHeading('Safety Observations');
+    if (d.safetyShoutouts.length) {
+      doc.setFont('helvetica', 'bold'); doc.text('Shout-outs:', margin, y); y += 14;
+      doc.setFont('helvetica', 'normal'); bulletList(d.safetyShoutouts);
+    }
+    if (d.safetyRisks.length) {
+      doc.setFont('helvetica', 'bold'); doc.text('Risks/Observations:', margin, y); y += 14;
+      doc.setFont('helvetica', 'normal'); bulletList(d.safetyRisks);
+    }
+  }
+
+  if (d.inspectionsPassed.length || d.inspectionsScheduled.length) {
+    sectionHeading('Inspections');
+    if (d.inspectionsPassed.length) {
+      doc.setFont('helvetica', 'bold'); doc.text('Passed:', margin, y); y += 14;
+      doc.setFont('helvetica', 'normal'); bulletList(d.inspectionsPassed);
+    }
+    if (d.inspectionsScheduled.length) {
+      doc.setFont('helvetica', 'bold'); doc.text('Scheduled:', margin, y); y += 14;
+      doc.setFont('helvetica', 'normal'); bulletList(d.inspectionsScheduled);
+    }
+  }
+
+  if (d.deliveries.length) { sectionHeading('Deliveries'); bulletList(d.deliveries); }
+  if (d.coordination.length) { sectionHeading('Key Coordination Items'); bulletList(d.coordination); }
+
+  if (d.verifyItems.length) {
+    checkPage(30);
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(13); doc.setTextColor(192, 0, 0);
+    doc.text('Items Needing Verification', margin, y); y += 18;
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(10);
+    bulletList(d.verifyItems, [192, 0, 0]); doc.setTextColor(0, 0, 0);
+  }
+
+  checkPage(20); doc.setFontSize(8); doc.setTextColor(136, 136, 136); doc.setFont('helvetica', 'italic');
+  doc.text('Parsed from meeting transcript by AI. Review before submission.', margin, y + 10);
+
+  const filename = `ACC-Parsed-Output-${d.reportDate.replace(/\//g, '-')}.pdf`;
+  doc.save(filename);
+  showStatus(`PDF saved: ${filename}`, 'success');
+  } catch(err) {
+    console.error('PDF export error:', err);
+    showStatus('PDF export failed: ' + err.message, 'error');
+  }
+}
+
+// ──────── EXPORT: DOCX ────────
+async function exportDocx() {
+  if (!parsedData) return;
+  try {
+  if (!window.docx || !window.docx.Document) {
+    showStatus('Error: docx library not loaded. Check your internet connection and refresh.', 'error'); return;
+  }
+  if (!window.saveAs) {
+    showStatus('Error: FileSaver library not loaded. Check your internet connection and refresh.', 'error'); return;
+  }
+  const d = parsedData;
+  const { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell,
+          HeadingLevel, AlignmentType, BorderStyle, WidthType, ShadingType, LevelFormat } = window.docx;
+
+  const border = { style: BorderStyle.SINGLE, size: 1, color: 'CCCCCC' };
+  const borders = { top: border, bottom: border, left: border, right: border };
+  const cellMargins = { top: 60, bottom: 60, left: 100, right: 100 };
+  const children = [];
+
+  let secNum = 1;
+
+  children.push(new Paragraph({ heading: HeadingLevel.HEADING_1, children: [new TextRun({ text: 'ACC Daily Report - Parsed Output' })] }));
+  children.push(new Paragraph({ spacing: { after: 40 }, children: [new TextRun({ text: 'Project: ', bold: true }), new TextRun(d.projectName)] }));
+  children.push(new Paragraph({ spacing: { after: 40 }, children: [new TextRun({ text: 'Date: ', bold: true }), new TextRun(d.reportDate)] }));
+  children.push(new Paragraph({ spacing: { after: 200 }, children: [new TextRun({ text: 'Source: ', bold: true }), new TextRun(d.source)] }));
+
+  if (d.workLog.length > 0) {
+    children.push(new Paragraph({ heading: HeadingLevel.HEADING_2, children: [new TextRun(`${secNum}. Work Log (Copy/Paste to ACC)`)] })); secNum++;
+    const colWidths = [2000, 1600, 1000, 800, 3960];
+    const headerTexts = ['Company', 'Discipline', '# Workers', 'Hours', 'Work Performed'];
+    const headerRow = new TableRow({
+      children: headerTexts.map((txt, i) => new TableCell({
+        borders, width: { size: colWidths[i], type: WidthType.DXA },
+        shading: { fill: '2B579A', type: ShadingType.CLEAR }, margins: cellMargins,
+        children: [new Paragraph({ children: [new TextRun({ text: txt, bold: true, color: 'FFFFFF', size: 18, font: 'Arial' })] })]
+      }))
+    });
+    const dataRows = d.workLog.map((r, idx) => new TableRow({
+      children: [r.company, r.discipline, r.workers + (r.needsVerify ? ' *' : ''), r.hours, r.work].map((val, i) =>
+        new TableCell({
+          borders, width: { size: colWidths[i], type: WidthType.DXA },
+          shading: idx % 2 === 1 ? { fill: 'F5F8FC', type: ShadingType.CLEAR } : undefined, margins: cellMargins,
+          children: [new Paragraph({ children: [
+            new TextRun({ text: String(val).replace(/ - VERIFY/g, ''), size: 18, font: 'Arial' }),
+            ...(r.needsVerify && i === 4 ? [new TextRun({ text: ' - VERIFY', bold: true, color: 'CC0000', size: 18, font: 'Arial' })] : [])
+          ] })]
+        })
+      )
+    }));
+    children.push(new Table({ width: { size: 9360, type: WidthType.DXA }, columnWidths: colWidths, rows: [headerRow, ...dataRows] }));
+    const totalW = d.workLog.reduce((s, r) => s + (parseInt(r.workers) || 0), 0);
+    children.push(new Paragraph({ spacing: { before: 80, after: 200 }, children: [
+      new TextRun({ text: `TOTALS: ~${totalW}+ workers`, bold: true }),
+      ...(d.workLog.some(r => r.needsVerify) ? [new TextRun(' (some headcounts need verification)')] : [])
+    ] }));
+  }
+
+  function addSection(title, items, subSections) {
+    children.push(new Paragraph({ heading: HeadingLevel.HEADING_2, children: [new TextRun(`${secNum}. ${title}`)] })); secNum++;
+    if (typeof items === 'string' && items) {
+      children.push(new Paragraph({ spacing: { after: 120 }, children: [new TextRun(items)] }));
+    }
+    if (subSections) {
+      for (const [subTitle, subItems] of subSections) {
+        if (subItems.length === 0) continue;
+        children.push(new Paragraph({ spacing: { before: 80 }, children: [new TextRun({ text: subTitle, bold: true })] }));
+        subItems.forEach(item => {
+          children.push(new Paragraph({ numbering: { reference: 'bullets', level: 0 }, spacing: { after: 40 },
+            children: [new TextRun({ text: item, size: 22, font: 'Arial' })] }));
+        });
+      }
+    }
+    if (Array.isArray(items) && items.length > 0) {
+      items.forEach(item => {
+        children.push(new Paragraph({ numbering: { reference: 'bullets', level: 0 }, spacing: { after: 40 },
+          children: [new TextRun({ text: item, size: 22, font: 'Arial' })] }));
+      });
+    }
+  }
+
+  if (d.weather) addSection('Weather', d.weather);
+  if (d.safetyShoutouts.length || d.safetyRisks.length) {
+    addSection('Safety Observations', null, [['Shout-outs:', d.safetyShoutouts], ['Risks/Observations:', d.safetyRisks]]);
+  }
+  if (d.inspectionsPassed.length || d.inspectionsScheduled.length) {
+    addSection('Inspections', null, [['Passed:', d.inspectionsPassed], ['Scheduled:', d.inspectionsScheduled]]);
+  }
+  if (d.deliveries.length) addSection('Deliveries', d.deliveries);
+  if (d.coordination.length) addSection('Key Coordination Items', d.coordination);
+
+  if (d.verifyItems.length) {
+    children.push(new Paragraph({ heading: HeadingLevel.HEADING_2, children: [new TextRun({ text: 'Items Needing Verification', color: 'CC0000' })] }));
+    d.verifyItems.forEach(item => {
+      children.push(new Paragraph({ numbering: { reference: 'numbers', level: 0 }, spacing: { after: 40 },
+        children: [new TextRun({ text: item, color: 'CC0000', size: 22, font: 'Arial' })] }));
+    });
+  }
+
+  children.push(new Paragraph({ spacing: { before: 300 }, children: [
+    new TextRun({ text: 'Parsed from meeting transcript by AI. Review before submission.', italics: true, color: '888888', size: 18, font: 'Arial' })
+  ] }));
+
+  const docFile = new Document({
+    styles: {
+      default: { document: { run: { font: 'Arial', size: 22 } } },
+      paragraphStyles: [
+        { id: 'Heading1', name: 'Heading 1', basedOn: 'Normal', next: 'Normal', quickFormat: true,
+          run: { size: 32, bold: true, font: 'Arial', color: '2B579A' }, paragraph: { spacing: { before: 240, after: 120 } } },
+        { id: 'Heading2', name: 'Heading 2', basedOn: 'Normal', next: 'Normal', quickFormat: true,
+          run: { size: 26, bold: true, font: 'Arial', color: '2B579A' }, paragraph: { spacing: { before: 200, after: 80 } } },
+      ]
+    },
+    numbering: { config: [
+      { reference: 'bullets', levels: [{ level: 0, format: LevelFormat.BULLET, text: '\u2022', alignment: AlignmentType.LEFT,
+        style: { paragraph: { indent: { left: 720, hanging: 360 } } } }] },
+      { reference: 'numbers', levels: [{ level: 0, format: LevelFormat.DECIMAL, text: '%1.', alignment: AlignmentType.LEFT,
+        style: { paragraph: { indent: { left: 720, hanging: 360 } } } }] },
+    ] },
+    sections: [{ properties: { page: { size: { width: 12240, height: 15840 }, margin: { top: 1440, right: 1440, bottom: 1440, left: 1440 } } }, children }]
+  });
+
+  const blob = await Packer.toBlob(docFile);
+  const filename = `ACC-Parsed-Output-${d.reportDate.replace(/\//g, '-')}.docx`;
+  saveAs(blob, filename);
+  showStatus(`DOCX saved: ${filename}`, 'success');
+  } catch(err) {
+    console.error('DOCX export error:', err);
+    showStatus('DOCX export failed: ' + err.message, 'error');
+  }
+}
+
+// ──────── UTILS ────────
+function showStatus(msg, type) {
+  const el = document.getElementById('statusMsg');
+  el.textContent = msg;
+  el.className = 'status ' + type;
+}
+
+const rawInput = document.getElementById('rawInput');
+</script>
+</body>
+</html>

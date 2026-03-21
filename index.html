@@ -555,6 +555,23 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
     .preview-frame { border: none; padding: 0; max-height: none; overflow: visible; }
     .container { max-width: 100%; margin: 0; padding: 0; }
   }
+
+  /* ── Contact footer ── */
+  .contact-footer {
+      text-align: center;
+      padding: 10px 24px;
+      font-size: 12px;
+      color: #999;
+      border-top: 1px solid #f0f0f0;
+  }
+  .contact-footer a {
+      color: #888;
+      text-decoration: none;
+  }
+  .contact-footer a:hover {
+      color: #004AAD;
+      text-decoration: underline;
+  }
 </style>
 </head>
 <body>
@@ -2371,5 +2388,10 @@ async function exportDocx() {
   }
 }
 </script>
+    <div class="contact-footer">
+        Questions or issues? Reach Felipe Engineer via <a href="https://teams.microsoft.com/l/chat/0/0?users=Felipe.Engineer@boldt.com">Teams message</a> or call <a href="tel:916-871-4556">916-871-4556</a>
+        <br>
+        <a href="https://www.theebfcshow.com/" target="_blank" style="color: #004AAD; font-weight: 500;">The EBFC Show</a> — Easier. Better. Faster. Cheaper.
+    </div>
 </body>
 </html>

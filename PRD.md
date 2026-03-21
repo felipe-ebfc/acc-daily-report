@@ -173,17 +173,27 @@ Full review: `docs/ED-REVIEW-Sprint4.md`
 
 ---
 
-## Sprint 5 Backlog — Refactor
+## Sprint 5 — "See What You Got" (revised from Ed's refactor, informed by Insurance Genie)
 
-Priority order from Ed's review:
+**Theme:** Surface parsing results visually before export. Fix real bugs. Keep single-file constraint.
 
-1. **Split into modules** — parser.js, export-pdf.js, export-docx.js, ui.js. Can still bundle for distribution.
-2. **Debug view** — collapsible JSON dump of parsedData for troubleshooting
-3. **Specific input feedback** — tell users what WAS found, not just "could not find structured sections"
-4. **Section splitter whitelist** — fix false positives by whitelisting known section names
-5. **Extract hardcoded patterns** — discipline/owner keywords from regex into config arrays
-6. **Error boundaries** — handle partial export failure gracefully
-7. **Fix global mutable parsedData** — god object pattern → proper data flow
+**Dropped from Ed's original Sprint 5:**
+- Module split (parser.js/export-pdf.js/ui.js) — breaks single-file deployment model. No build step allowed.
+- Debug view — developer tool, not for field coordinators. Can add behind `?debug=true` later if needed.
+- God object refactor — nice-to-have but doesn't help the user today.
+
+**Added from Insurance Genie learnings:**
+- Parse Quality Dashboard, Section visual, VERIFY summary, Copy as Text — all proven UX patterns from Insurance Genie's compliance dashboard.
+
+| # | Item | Source | Effort | Description |
+|---|------|--------|--------|-------------|
+| 1 | Parse Quality Dashboard | Insurance Genie | Small | After parsing, show "5/7 sections found ✅" or "5/7 — missing: Inspections, Deliveries ⚠️" at top of output |
+| 2 | Section-by-section visual | Insurance Genie | Small | ✅/❌ per section with counts: Manpower ✅ (6 trades) · Action Items ✅ (5) · Inspections ❌ Not found |
+| 3 | VERIFY flag summary | Insurance Genie | Small | Collect all VERIFY flags into one summary block visible before export: "3 items need verification" |
+| 4 | Section splitter whitelist | Ed bug #1 | Small | Fix false positives — whitelist known section names instead of matching any `^[A-Z]...:$` line |
+| 5 | Footnote stripper fix | Ed bug #3 | Small | Only strip trailing digits after sentence-ending punctuation, not after real data like "Level 2" |
+| 6 | Config extraction | Ed recommendation | Medium | Pull hardcoded discipline/owner/section keywords into a config object at top of file |
+| 7 | "📋 Copy as Text" button | Insurance Genie | Small | Copy formatted report as plain text for pasting into Teams/email without exporting a file |
 
 ---
 

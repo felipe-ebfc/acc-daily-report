@@ -600,17 +600,18 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
       <div class="step-title">Paste the Copilot Summary</div>
     </div>
     <div class="step-body">
-      <div class="helper-text">
-        <strong>How to get the summary from Teams:</strong>
-        <ul class="helper-steps">
-          <li data-step="1">Open <strong>Microsoft Teams</strong> and go to your meeting chat or calendar</li>
-          <li data-step="2">Click the <strong>Recap</strong> tab at the top of the meeting</li>
-          <li data-step="3">Find the <strong>AI Notes</strong> (Copilot summary) section</li>
-          <li data-step="4">Click inside the summary, press <strong>Ctrl+A</strong> (select all), then <strong>Ctrl+C</strong> (copy)</li>
-          <li data-step="5">Click in the box below and press <strong>Ctrl+V</strong> (paste)</li>
-        </ul>
-      </div>
-      <textarea id="rawInput" placeholder="Paste the Copilot AI summary here...
+      <div style="display: flex; gap: 16px; align-items: stretch;">
+        <div class="helper-text" style="flex: 0 0 280px; margin-bottom: 0; align-self: stretch;">
+          <strong>How to get the summary from Teams:</strong>
+          <ul class="helper-steps">
+            <li data-step="1">Open <strong>Microsoft Teams</strong> and go to your meeting chat or calendar</li>
+            <li data-step="2">Click the <strong>Recap</strong> tab at the top of the meeting</li>
+            <li data-step="3">Find the <strong>AI Notes</strong> (Copilot summary) section</li>
+            <li data-step="4">Click inside the summary, press <strong>Ctrl+A</strong> (select all), then <strong>Ctrl+C</strong> (copy)</li>
+            <li data-step="5">Paste into the box on the right</li>
+          </ul>
+        </div>
+        <textarea id="rawInput" style="flex: 1; min-height: 160px;" placeholder="Paste the Copilot AI summary here...
 
 The parser works best with structured summaries that include sections like:
   - Work log / trade headcounts
@@ -619,6 +620,7 @@ The parser works best with structured summaries that include sections like:
   - Inspections (passed and scheduled)
   - Deliveries
   - Coordination items"></textarea>
+      </div>
 
       <!-- Copilot prompt options -->
       <div class="prompt-section">

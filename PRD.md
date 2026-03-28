@@ -24,7 +24,7 @@ Originally scoped as a Teams Copilot agent, then rebuilt as a standalone single-
 
 ---
 
-## Current Implementation (v1.4)
+## Current Implementation (v1.5)
 
 ### Workflow
 ```
@@ -102,14 +102,18 @@ Handles HTML table paste from Copilot — discipline keywords, owner patterns, a
 
 ### UX Features
 - 3-step numbered wizard (Paste → Confirm → Parse & Export)
-- Helper text for non-technical users on finding the Copilot summary
-- Collapsible "Need more detail?" with ready-to-copy Copilot prompt
+- Side-by-side layout: helper text (left) + paste box (right) — single screen, no scrolling
+- Two Copilot prompt buttons for different failure modes:
+  - **📋 Summary too thin?** — prompt for richer summary from Teams Recap Copilot chat
+  - **📄 Have a transcript instead?** — prompt + step-by-step workflow for raw transcript → any AI (Copilot, ChatGPT, Claude) → parser
 - Raw transcript detection — warns if full transcript pasted instead of summary
 - Duplicate paste detection
 - Library status check on page load
 - Processing spinner during parse
 - localStorage for project name persistence
-- Version footer (v1.4)
+- Blank default project name with placeholder — supports multi-job deployment
+- Report date uses local time (not UTC) — prevents next-day date in evening hours
+- Version footer (v1.5)
 - Print-friendly CSS
 
 ### Export Styling
@@ -170,6 +174,7 @@ Full review: `docs/ED-REVIEW-Sprint4.md`
 | 2 | Field Ready | Feb 23 | Footnote fix, safety parsing, catastrophic regex fix, localStorage, print CSS |
 | 3 | Real-World Input | Feb 23 | Bracket citation stripping, mashed HTML table parser (Strategy 5), duplicate detection |
 | 4 | Ed's Review | Feb 23 | Code review (6.5/10), bug list, refactor recommendations |
+| 5 | Multi-Job Ready | Mar 27 | Transcript prompt button, side-by-side UX, blank project name, UTC date fix |
 
 ---
 
@@ -204,14 +209,12 @@ Full review: `docs/ED-REVIEW-Sprint4.md`
 - Hardcoded owner/discipline patterns — new names silently fail
 - No OCR — requires text-based Copilot output, not screenshots
 - `file://` deployment means no server-side validation
-- Hardcoded for one project (Folsom Care Complex) — project name in localStorage but template structure is ACC-specific
+- Template structure is ACC-specific (supports multiple projects via blank default + localStorage)
 
 ## Future Backlog
-- Second textarea for prompted Copilot response
 - Offline CDN bundling (already done — libraries inline)
 - Relative date resolution (Copilot says "Next Tuesday")
 - DOCX schema validation
-- Multi-project template support
 - Batch parsing (multiple days)
 
 ---
@@ -255,4 +258,5 @@ ACC-Daily-Report-App/
 ---
 
 *PRD created: March 21, 2026 — modeled after Insurance Genie SPEC.md structure*
+*Updated: March 27, 2026 — v1.5 (multi-job, transcript prompt, UX improvements)*
 *Source material: README.md, SPRINT-LOG.md, ED-REVIEW-Sprint4.md, HANDOFF-from-Cowork.md, COPILOT-PROMPT.md*

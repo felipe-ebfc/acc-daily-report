@@ -836,7 +836,9 @@ const CONFIG = {
 let parsedData = null;
 
 // Set today's date as default
-document.getElementById('reportDate').value = new Date().toISOString().split('T')[0];
+// Use local date, not UTC (toISOString returns UTC which can be tomorrow in PST evenings)
+const now = new Date();
+document.getElementById('reportDate').value = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
 
 // Restore last-used project name from localStorage
 try {

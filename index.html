@@ -620,15 +620,17 @@ The parser works best with structured summaries that include sections like:
   - Deliveries
   - Coordination items"></textarea>
 
-      <!-- Copilot prompt for richer detail -->
+      <!-- Copilot prompt options -->
       <div class="prompt-section">
-        <button class="prompt-toggle" id="promptToggle" onclick="togglePrompt()">
-          <span>Need more detail? Use this Copilot prompt to get a richer summary</span>
-          <span class="arrow">&#9660;</span>
-        </button>
-        <div class="prompt-body" id="promptBody">
-          <p>If the default Copilot summary is too thin, open the <strong>Copilot chat</strong> in your Teams meeting Recap and paste this prompt. Then copy the response and paste it above.</p>
-          <div class="prompt-box" id="copilotPrompt">From this meeting, provide a structured daily construction report with these sections.
+        <div style="display: flex; gap: 8px; padding: 10px 16px; background: #f8f9fb;">
+          <button class="btn btn-sm" style="flex: 1; background: #2B579A; color: #fff; border: none; padding: 10px 12px; border-radius: 6px; font-weight: 600; font-size: 13px; cursor: pointer;" onclick="showPromptPanel('thin')">📋 Summary too thin?</button>
+          <button class="btn btn-sm" style="flex: 1; background: #D83B01; color: #fff; border: none; padding: 10px 12px; border-radius: 6px; font-weight: 600; font-size: 13px; cursor: pointer;" onclick="showPromptPanel('transcript')">📄 Have a transcript instead?</button>
+        </div>
+
+        <!-- Panel: Thin summary -->
+        <div class="prompt-body" id="promptPanelThin">
+          <p><strong>Copilot summary too thin?</strong> Open the <strong>Copilot chat</strong> in your Teams meeting Recap and paste this prompt. Copy the response and paste it in the box above.</p>
+          <div class="prompt-box" id="copilotPromptThin">From this meeting, provide a structured daily construction report with these sections.
 Do not include source citation numbers or footnotes in your response.
 If a section was not discussed, write "Not discussed."
 
@@ -653,8 +655,49 @@ If a section was not discussed, write "Not discussed."
 
 Be specific with names, numbers, and dates. Use "Not specified" when info is unknown.</div>
           <div>
-            <button class="btn btn-sm btn-primary" onclick="copyPrompt()">Copy Prompt to Clipboard</button>
-            <span class="copy-feedback" id="copyFeedback">Copied!</span>
+            <button class="btn btn-sm btn-primary" onclick="copyPromptById('copilotPromptThin')">Copy Prompt to Clipboard</button>
+            <span class="copy-feedback" id="copyFeedbackThin">Copied!</span>
+          </div>
+        </div>
+
+        <!-- Panel: Raw transcript -->
+        <div class="prompt-body" id="promptPanelTranscript">
+          <p><strong>No AI summary? No problem.</strong> When Copilot's summary breaks or you only have a raw transcript, follow these steps:</p>
+          <ol style="font-size: 12px; color: #333; line-height: 1.8; padding-left: 20px; margin-bottom: 12px;">
+            <li><strong>Copy the prompt below</strong> (click the button)</li>
+            <li>Open <strong>Copilot chat</strong> in Teams (or any AI — ChatGPT, Claude, etc.)</li>
+            <li><strong>Paste the prompt first</strong>, then paste the <strong>full meeting transcript</strong> right after it</li>
+            <li><strong>Copy the AI response</strong> and paste it into the parser box above</li>
+          </ol>
+          <div class="prompt-box" id="copilotPromptTranscript">From this meeting transcript, provide a structured daily construction report with these sections.
+Do not include source citation numbers or footnotes in your response.
+If a section was not discussed, write "Not discussed."
+
+1. MANPOWER: List each company/trade as a pipe-separated table, one row per line:
+   Company | Discipline | # Workers | Hours | Work Performed
+   Example: Hillcrest Plumbing | Plumbing | 8 | 8 hours | Rough-in on Level 1
+
+2. ACTION ITEMS: Pipe-separated table:
+   Action Item | Owner | Due Date
+
+3. INSPECTIONS: Pipe-separated table:
+   Inspection | Status (Passed/Scheduled/Failed) | Date
+
+4. DELIVERIES: Pipe-separated table:
+   Material | Expected Date
+
+5. WEATHER: Current conditions and any impacts on work
+
+6. SAFETY: Observations, guidance given, incidents, PPE compliance
+
+7. COORDINATION: Scheduling conflicts, sequencing issues, follow-up items
+
+Be specific with names, numbers, and dates. Use "Not specified" when info is unknown.
+
+--- PASTE FULL MEETING TRANSCRIPT BELOW THIS LINE ---</div>
+          <div>
+            <button class="btn btn-sm" style="background: #D83B01; color: #fff; border: none; padding: 8px 16px; border-radius: 6px; font-weight: 600; cursor: pointer;" onclick="copyPromptById('copilotPromptTranscript')">Copy Transcript Prompt to Clipboard</button>
+            <span class="copy-feedback" id="copyFeedbackTranscript">Copied!</span>
           </div>
         </div>
       </div>
@@ -806,17 +849,27 @@ document.getElementById('projectName').addEventListener('change', function() {
   try { localStorage.setItem('acc-parser-project-name', this.value); } catch(e) {}
 });
 
-function togglePrompt() {
-  const body = document.getElementById('promptBody');
-  const toggle = document.getElementById('promptToggle');
-  body.classList.toggle('show');
-  toggle.classList.toggle('open');
+function showPromptPanel(type) {
+  const thinPanel = document.getElementById('promptPanelThin');
+  const transcriptPanel = document.getElementById('promptPanelTranscript');
+  if (type === 'thin') {
+    const isOpen = thinPanel.classList.contains('show');
+    thinPanel.classList.toggle('show');
+    transcriptPanel.classList.remove('show');
+    if (!isOpen) thinPanel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  } else {
+    const isOpen = transcriptPanel.classList.contains('show');
+    transcriptPanel.classList.toggle('show');
+    thinPanel.classList.remove('show');
+    if (!isOpen) transcriptPanel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
 }
 
-function copyPrompt() {
-  const text = document.getElementById('copilotPrompt').textContent;
+function copyPromptById(id) {
+  const text = document.getElementById(id).textContent;
   navigator.clipboard.writeText(text).then(() => {
-    const fb = document.getElementById('copyFeedback');
+    const fbId = id === 'copilotPromptThin' ? 'copyFeedbackThin' : 'copyFeedbackTranscript';
+    const fb = document.getElementById(fbId);
     fb.classList.add('show');
     setTimeout(() => fb.classList.remove('show'), 2000);
   });
